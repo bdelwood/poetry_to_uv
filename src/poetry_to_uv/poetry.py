@@ -3,7 +3,6 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from packaging.utils import canonicalize_name
-
 from poetry_to_uv.constants import POETRY_COMMAND
 from poetry_to_uv.typing import PoetryResolvedDependencies
 
@@ -29,11 +28,13 @@ class PoetryDependencyExporter:
             for group in self.groups:
                 groups_command += f"--with {group} "
 
-        path_command = f"--directory={self.path.absolute()}"
+        path_command = f"--directory={self.path.parent.absolute()}"
 
         return f"{POETRY_COMMAND} {extras_command} {groups_command} {path_command}"
 
-    def _process_poetry_export_command(self, poetry_response: bytes) -> PoetryResolvedDependencies:
+    def _process_poetry_export_command(
+        self, poetry_response: bytes
+    ) -> PoetryResolvedDependencies:
         """
         Handles the parsing of the poetry export command.
 
@@ -49,12 +50,13 @@ class PoetryDependencyExporter:
         dependency_mapping: PoetryResolvedDependencies = {}
         for decoded_poetry_response_row in decoded_poetry_response_rows:
             dependency_version = decoded_poetry_response_row.split(";")[0]
+            print(dependency_version)
 
             if not dependency_version:
                 continue
 
             if "@" in dependency_version:
-                dependency, version = dependency_version.split("@")
+                dependency, version = dependency_version.split(" @ ")
             elif "==" in dependency_version:
                 dependency, version = dependency_version.split("==")
             else:
@@ -72,5 +74,7 @@ class PoetryDependencyExporter:
             The mapping of the dependency name to their version strings.
         """
         poetry_export_command = self._build_command()
-        poetry_response = subprocess.run(poetry_export_command.split(), capture_output=True)
+        poetry_response = subprocess.run(
+            poetry_export_command.split(), capture_output=True
+        )
         return self._process_poetry_export_command(poetry_response.stdout)
